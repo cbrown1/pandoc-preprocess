@@ -1,0 +1,6 @@
+\begin{figure}[!h]
+\centering
+\includegraphics[width=$width\textwidth]{$id(fig_filepath)}\vspace{-10pt}%
+\caption{\textbf{$id(fig_title)} $id(fig_caption)}
+\label{$id}
+\end{figure}
