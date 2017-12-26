@@ -1,0 +1,69 @@
+source: 'test/test_critic.md'
+
+additions:
+    - start: 99
+      end: 111
+      line: 4
+      original: |-4
+          {++added ++}
+      value: |-4
+          added 
+
+    - start: 144
+      end: 190
+      line: 6
+      original: |-4
+          {++ that now contains a fair amount of text++}
+      value: |-4
+           that now contains a fair amount of text
+
+deletions:
+    - start: 204
+      end: 217
+      line: 8
+      original: |-4
+          {--wanted --}
+      value: |-4
+          wanted 
+
+substitutions:
+    - start: 292
+      end: 307
+      line: 10
+      original: |-4
+          {~~good~>bad~~}
+      old: |-4
+          good
+      value: |-4
+          bad
+
+highlights:
+    - start: 340
+      end: 410
+      line: 12
+      original: |-4
+          {==@CAB Comments are also available, and do not show up in output. ==}
+      value: |-4
+          @CAB Comments are also available, and do not show up in output. 
+
+comments:
+    - start: 229
+      end: 271
+      line: 10
+      original: |-4
+          {>>@CAB Here is a comment all by itself<<}
+      value: |-4
+          Here is a comment all by itself
+      author: |-4
+          @CAB
+
+    - start: 307
+      end: 324
+      line: 10
+      original: |-4
+          {>>@CAB better<<}
+      value: |-4
+          better
+      author: |-4
+          @CAB
+
