@@ -11,14 +11,60 @@ import argparse
 import fileinput
 import daiquiri
 
-def read_yaml_header(raw):
-    # Read in file. Take first section as yml block, everything else as body
-    preamble = raw.split('---')[1]
-    if raw.find('---') == -1:
-        body = ""
-    else:
-        body = raw.split('---')[2]
-    return preamble, body
+def get_header_block(data, linesep="\n"):
+    """Finds a yaml metadata block in a string, returns it as a str along with everything else in the string
+
+        This function is called recursively by get_yaml_data
+    """
+
+    delim_start = ["---"]
+    delim_end = ["---", "..."]
+
+    data_lines = data.split(linesep)
+    head = []
+    body = []
+    found_head = False
+    done = False
+    for l in data_lines:
+        if not found_head:
+            if l in delim_start:
+                found_head = True
+            else:
+                body.append(l)
+        else:
+            if done:
+                body.append(l)
+            elif l in delim_end:
+                done = True
+            else:
+                head.append(l)
+
+    return linesep.join(head), linesep.join(body)
+
+
+def get_yaml_data(data, linesep="\n"):
+    """Expects a string input representing a pandoc markdown file, and
+        splits the document into a yaml metadata str and a markdown body str.
+        
+        Pandoc help indicates that yaml metadata blocks can be anywhere in the 
+        document, must start with a '---' and must end with either '---' or '...'. 
+        
+        This function loops until it finds all blocks, then concatenates them,
+        and concatenates the document body text as well, and returns both.
+    """
+    found = True
+    meta = ""
+    body = ""
+    this_body = data
+    while found:
+        this_meta, this_body = get_header_block(this_body, linesep)
+        if this_meta == "":
+            found = False
+        else:
+            meta = linesep.join([meta, this_meta])
+            body = this_body
+    return meta, body
+
 
 class preproc_macros():
     """ Allows macro processing in markdown. Useful as a pandoc preprocessor.
@@ -236,7 +282,7 @@ if __name__ == "__main__":
             raw += line
 
         # Split into head (yaml) and body (md)
-        this_head,this_body = read_yaml_header(raw)
+        this_head,this_body = get_yaml_data(raw)
         # Load yaml str into metadata dict
         this_meta = yaml.safe_load(this_head)
         # Merge this metadata dict with others (function imported from pypi package yamlreader)
