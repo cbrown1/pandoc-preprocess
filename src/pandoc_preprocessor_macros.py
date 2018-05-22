@@ -6,6 +6,7 @@ import sys
 import re
 import csv
 import yaml
+from yamlreader import data_merge
 import argparse
 import fileinput
 import daiquiri
@@ -82,24 +83,16 @@ class preproc_macros():
                 if isinstance(item, str):
                     for key,val in metadata[item].iteritems():
                         self.proc_var(self.variables, key, val, "var", "metadata variable")
-#                        thisval,fmt = self.proc_var(self.variables, item, key, val)
-#                        self.variables [key] = thisval
-#                        self.logger.debug('Got {} var: {} from key: {} in metadata variable: {}'.format(fmt, self.truncate(thisval), key, item))
                 else:
                     for key,val in item.iteritems():
                         self.proc_var(self.variables, key, val, "var", "metadata dict")
-#                        thisval,fmt = self.proc_var(val)
-#                        self.variables [key] = thisval
-#                        self.logger.debug('Got {} var: {} from key: {} in metadata dict: {}'.format(fmt, self.truncate(thisval), key, item))
 
         if metadata.has_key('macro_idvars'):
             for item in metadata['macro_idvars']:
                 for key,val in metadata[item].iteritems():
                     outkey = item + "||" + key
                     self.proc_var(self.idvariables, outkey, val, "idvar", "metadata variable")
-#                    thisval,fmt = self.proc_var(val)
-#                    self.idvariables [outkey] = thisval
-#                    self.logger.debug('Got {} idvar: {} from key: {} in metadata variable: {}'.format(fmt, self.truncate(thisval), key, item))
+
         if metadata.has_key('macro_proc'):
             for key,val in metadata['macro_proc'].iteritems():# For each item:
                 if os.path.isfile(val):                       # If the val is a real file:
@@ -109,12 +102,6 @@ class preproc_macros():
                     self.proc [key] = metadata[val]           #   Assume metadata var is template
                     self.logger.debug('Found macro name: {} and metadata str template: {} in macro_proc metadata variable'.format(key, self.truncate(val)))
 
-#        if metadata.has_key('macro_proc'):
-#            for key,val in metadata['macro_proc'].iteritems():# For each item:
-#                self.proc_var(self.proc, key, val, "template and macro name", "macro_proc metadata variable")
-##                thisval,fmt = self.proc_var(val)
-##                self.proc [key] = thisval
-##                self.logger.debug('Got {} template: {} and macro name: {} in macro_proc metadata variable: {}'.format(fmt, self.truncate(thisval), key, item))
 
     def init_vars_args( self, args ):
 
@@ -125,15 +112,9 @@ class preproc_macros():
                     if ":" in item:
                         key,val = item.split(":")
                         self.proc_var(self.variables, key, val, "var", "command line")
-#                        thisval,fmt = self.proc_var(val)
-#                        self.variables [key] = thisval
-#                        self.logger.debug('Got {} var: {} from key: {} from command line'.format(fmt, self.truncate(thisval), key, item))
                     else:
                         for key,val in metadata[item].iteritems():
                             self.proc_var(self.variables, key, val, "var", "metadata variable from command line")
-#                            thisval,fmt = self.proc_var(val)
-#                            self.variables [key] = thisval
-#                            self.logger.debug('Got {} var: {} from key: {} in metadata variable: {} from command line'.format(fmt, self.truncate(thisval), key, item))
 
         if args.idvar:
             for v in args.idvar:
@@ -147,16 +128,10 @@ class preproc_macros():
                         val = val.strip(")")
                         outkey = id + "||" + key
                         self.proc_var(self.idvariables, outkey, val, "idvar", "command line")
-#                        thisval,fmt = self.proc_var(val)
-#                        self.idvariables[key][id] = thisval
-#                        self.logger.debug('Got {} idvar: {} from key: {} from command line'.format(fmt, self.truncate(thisval), key))
                     else:
                         for key,val in metadata[item].iteritems():
                             outkey = item + "||" + key
                             self.proc_var(self.idvariables, key, val, "idvar", "metadata variable from command line")
-#                            thisval,fmt = self.proc_var(val)
-#                            self.idvariables [key][item] = thisval
-#                            self.logger.debug('Got {} idvar: {} from key: {} in metadata variable: {} from command line'.format(fmt, self.truncate(thisval), key, item))
 
         if args.proc:
             items = args.proc.split(",")
@@ -180,8 +155,6 @@ class preproc_macros():
 
         for name,template in self.proc.iteritems():
 
-#            self.logger.debug("Processing macro: {}; template: {}".format(name, template))
-
             re_macro_string = str(self.re_macro_string)
             re_macro_string = re_macro_string.replace('macro', name)
             re_macro = re.compile(re_macro_string)
@@ -204,7 +177,7 @@ class preproc_macros():
                         key,val = v.split("=")
                         key = key.strip(" \"\'")
                         val = val.strip(" \"\'")
-                        print(os.path.isfile(val))
+                        #print(os.path.isfile(val))
                         #variables[var] = val
                         variables = self.proc_var(variables, key, val, "var", "macro variable")
 
@@ -231,8 +204,6 @@ class preproc_macros():
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description = "Simple pandoc preprocessor script to process macros")
-    parser.add_argument("source_file", type=str,
-                        help="the path to the source md file, or - for stdin")
     parser.add_argument("-o", "--output", default=None, type=str,
                         help="the path to the output md file. If ommitted, write to stdout")
     parser.add_argument("-d", "--debug", default=False, action='store_true',
@@ -245,34 +216,46 @@ if __name__ == "__main__":
                         help="A comma-separated list of variables needed. If an item is delimited with a colon (key:val), then it will be added to the variable list. in the form key1:val1,key2:val2")
     parser.add_argument("-i", "--idvar", default=None, type=str, action='append',
                         help="A comma-separated list of variables to be expanded by id. To specify idvars at the command line, use the form var1(id1:val1),var1(id2:val2). Think of figure captions: caption(fig1:This is the caption). To specify a yaml header variable, just name it: var1. The yaml variable should be a dict with ids as keys. The id is the main parameter in the macro (in parentheses). Specify an idvar in your template with $id(var1). For the caption example, $id(caption)")
+    parser.add_argument("source_files", nargs='+', type=str,
+                        help="the path to the source md file or files, or - for stdin") # Returns a list
     args = parser.parse_args()
 
-    source_file = args.source_file
     out_file = args.output
+    source_files = args.source_files
 
     preproc = preproc_macros()
 
     preproc.debug = args.debug
 
-    raw = ""
-    for line in fileinput.input(source_file):
-        raw += line
+    meta = {}
+    body = ""
+    for source_file in source_files:
+        raw = ""
+        # Read in md file as str
+        for line in fileinput.input(source_file):
+            raw += line
 
-#    raw = open(source_file, 'r').read()
-    head,data = read_yaml_header(raw)
-    metadata = yaml.load(head)
+        # Split into head (yaml) and body (md)
+        this_head,this_body = read_yaml_header(raw)
+        # Load yaml str into metadata dict
+        this_meta = yaml.safe_load(this_head)
+        # Merge this metadata dict with others (function imported from pypi package yamlreader)
+        meta = data_merge(meta, this_meta)
+        # Merge this body str with others
+        body = body + this_body
 
-    preproc.init_vars_metadata(metadata)
+    preproc.init_vars_metadata(meta)
     preproc.init_vars_args(args)
 
-    new_data = preproc.process( data )
+    new_body = preproc.process( body )
 
-    delim = "---" # + os.linesep
-    new_file = delim + head + delim + new_data
+    delim = "---" + os.linesep
+    # Create new file. The metadata here is ugly but usable
+    new_file = delim + yaml.safe_dump(meta) + delim + new_body
 
     if out_file:
         with open(out_file, "w") as f:
-            f.write("%s" % new_file)
+            f.write(new_file)
             f.flush()
     else:
         print(new_file)
